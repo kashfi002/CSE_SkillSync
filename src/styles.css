@@ -118,6 +118,10 @@ input[type="password"], input.pw { padding-right: 48px; }
 .eye svg { width: 18px; height: 18px; }
 .link { color: var(--glow); font-size: 14px; font-weight: 400; }
 .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.link.forgot { padding: 0; border: 0; background: none; font: inherit; color: var(--glow); cursor: pointer; }
+.link.forgot:disabled { opacity: .6; cursor: wait; }
+.form-message { margin: 0; color: var(--glow); font-size: 14px; line-height: 1.5; }
+.form-message.error { color: #f0788a; }
 .forgot { justify-self: end; margin-top: -6px; }
 form .cta { justify-self: center; margin-top: 6px; padding: 12px 40px; }
 .alt { justify-self: center; margin-top: -4px; }

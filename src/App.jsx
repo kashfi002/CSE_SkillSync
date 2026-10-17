@@ -5,11 +5,15 @@ import {
 import { AppContext } from './context/AppContext.jsx';
 import AppShell from './components/AppShell.jsx';
 import { RateDialog } from './pages/RateDialog.jsx';
-import { HomeView, LoginView, SignupView } from './pages/PublicPages.jsx';
+import { HomeView } from './pages/PublicPages.jsx';
+import { LoginView } from './pages/Login.jsx';
+import { SignupView } from './pages/Signup.jsx';
+import { supabase } from './lib/supabase.js';
 
 function CseSkillSync() {
   const [hash, setHash] = useState(() => window.location.hash.slice(1));
   const [loggedIn, setLoggedIn] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState(makeUser);
   const [courses, setCourses] = useState(makeCourses);
   const [learning] = useState(makeLearning);
@@ -21,6 +25,37 @@ function CseSkillSync() {
   const [rate, setRate] = useState({ step: 1, stars: 0, hover: 0, note: "", err: false, sub: "", done: "" });
   const dlgRef = useRef(null);
 
+  useEffect(() => {
+    const applySession = (session) => {
+      const authUser = session?.user;
+      if (authUser) {
+        const metadata = authUser.user_metadata || {};
+        setUser((current) => ({
+          ...current,
+          name: metadata.name || current.name,
+          inst: metadata.inst || current.inst,
+          role: metadata.role || current.role,
+          bio: metadata.bio || "",
+          photo: metadata.photo || "",
+          offer: Array.isArray(metadata.offer) ? metadata.offer : current.offer,
+          learn: Array.isArray(metadata.learn) ? metadata.learn : current.learn,
+        }));
+      }
+      setLoggedIn(Boolean(authUser));
+      setAuthReady(true);
+    };
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('Unable to restore Supabase session:', error.message);
+      applySession(data?.session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   /* hash routing */
   useEffect(() => {
     const on = () => setHash(window.location.hash.slice(1));
@@ -28,7 +63,7 @@ function CseSkillSync() {
     return () => window.removeEventListener("hashchange", on);
   }, []);
 
-  const blocked = !loggedIn && APP_VIEWS.includes(hash);
+  const blocked = authReady && !loggedIn && APP_VIEWS.includes(hash);
   useEffect(() => {
     if (blocked) window.location.replace("#login");
   }, [blocked]);
@@ -100,7 +135,9 @@ function CseSkillSync() {
     }));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Unable to sign out:', error.message);
     setLoggedIn(false);
     setUser(makeUser());
     setCourses(makeCourses());
@@ -122,6 +159,8 @@ function CseSkillSync() {
   };
 
   const isApp = APP_VIEWS.includes(view);
+
+  if (!authReady) return null;
 
   return (
     <AppContext.Provider value={ctx}>
